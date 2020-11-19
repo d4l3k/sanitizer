@@ -49,13 +49,13 @@ void postActivate() {
     setState(ACTIVATING);
     server.send(200, "text/html", "activating!");
   } else {
-    server.send(500, "text/html", "can't activate, state="+state);
+    server.send(500, "text/html", "can't activate, state="+String(state));
   }
 }
 
 void getDebug() {
   server.send(200, "application/json", 
-  "{\"state\": "+String(state)+", \"state_entered\": "+String(stateEntered)+"}");
+  "{\"state\": "+String(state)+", \"state_entered\": "+String(millis() - stateEntered)+"}");
 }
 
 int lastLogged = 0;
@@ -89,6 +89,9 @@ void monitorWiFi() {
 }
 
 void setState(enum states newState) {
+  if (newState == state) {
+    return;
+  }
   Serial.printf("entering state %d\r\n", newState);
   state = newState;
   stateEntered = millis();
@@ -132,12 +135,10 @@ void loop() {
     digitalWrite(LED, HIGH); // Turn the LED off by making the voltage HIGH
   }
 
-  button = digitalRead(BUTTON) == LOW;
+  button = digitalRead(BUTTON) == LOW && timeInState() >= 1000;
 
   if (motion) {
-    if(state != MOTION) {
-      setState(MOTION);
-    }
+    setState(MOTION);
   } else if (state == MOTION && !motion) {
     setState(READY);
   } else if (state == READY && button) {
@@ -145,9 +146,9 @@ void loop() {
   } else if (state == ACTIVATING && timeInState() > 10000) {
     setState(UVC);
   } else if (state == UVC && timeInState() > 5*60*1000) {
-    state = READY;
+    setState(READY);
   } else if ((state == UVC || state == ACTIVATING) && button) {
-    state = READY;
+    setState(READY);
   }
 
   updateLEDs();
