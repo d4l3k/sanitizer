@@ -113,7 +113,7 @@ void updateLEDs() {
     color = CRGB ( 255, 0, 0);
     flashing = true;
   } else if (state == ACTIVATING) {
-    color = CRGB ( 255,255, 0);
+    color = CRGB ( 255,150, 0);
     flashing = true;
   }
   if (flashing && ((millis() / 250) % 2 == 0)) {
