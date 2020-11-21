@@ -1,7 +1,12 @@
 # sanitizer
 
 
-Effectiveness:
+
+Building a box lined with aluminum foil and mounting this in the top of the box
+is probably the best way to disinfect things quickly.
+
+
+## UVC Leds Power by distance away
 
 For a half sphere falloff:
 
@@ -20,3 +25,9 @@ For a half sphere falloff:
  |  270 nm |   |   |   | 2.8 |
 
  from https://www.klaran.com/crystal-is-and-boston-university-research-demonstrate-klaran-uvc-leds-effective-wavelength-for-inactivating-sars-cov-2
+
+## Aluminum foil reflectivity
+
+Aluminum foil has a reflectivity of 73% for UVC light.
+
+https://www.klaran.com/images/kb/application-notes/Using-UV-Reflective-Materials-to-Maximize-Disinfection---Application-Note---AN011.pdf
