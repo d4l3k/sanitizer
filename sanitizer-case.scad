@@ -77,7 +77,7 @@ module button() {
 
   sensor_length = 32.57;
   sensor_width = 24.26;
-  sensor_height = 10;
+  sensor_height = 11;
   cap_size = 23.25;
   cap_base = 3.4;
   
@@ -160,12 +160,16 @@ module chip() {
 }
   small_chip_width = 25.8;
   small_chip_length = 34.21;
+  small_chip_height = 4.28; // includes boards
+  small_board_height = 1.16;
+
+
 
 
 module small_chip() {
-  board_height = 1.16;
   board_width = small_chip_width;
     board_length = small_chip_length;
+  board_height = small_board_height;
 
   cube([board_length, board_width, board_height]);
   
@@ -176,10 +180,9 @@ module small_chip() {
   
   chip_width = 11.88;
   chip_length = 15;
-  chip_height = 4.28; // includes boards
   
   translate([11.55, (board_width-chip_width)/2, 0])
-  cube([chip_length, chip_width, chip_height]);
+  cube([chip_length, chip_width, small_chip_height]);
   
   translate([0, board_width/2+(port_width-port_height)/2, 0.84-port_height+board_height])
   rotate([90, 0, 270])
@@ -208,16 +211,16 @@ led_board_offset = small_chip_length+shell + e*3;
 row2 = small_chip_width + sensor_width/2 + shell + e*3;
 
 module components() {
- translate([e, e, -case_height*1/4])
+ translate([e, e, -small_chip_height-e])
 small_chip();
 
 translate([led_board_offset, long_width/2, -board_max_height-e])
 led_board();
 
-translate([e, row2, -sensor_height-e])
+translate([shell+e, row2, -sensor_height-e])
 motion_sensor();
 
-translate([e, row2, -case_height/2])
+translate([0, row2, -case_height/2])
 rotate([90, 0, -90])
 button();
 
@@ -229,8 +232,12 @@ led_strip();
 
 tab = 4;
 
+module part() {
 
 translate([0, 0, -height]) {
+  difference () {
+    union() {
+
   
   translate([small_chip_length+e*2, small_chip_width-tab+e])
   cube([shell, tab+shell, height]);
@@ -239,11 +246,25 @@ translate([0, 0, -height]) {
   translate([0, small_chip_width+e*2])
   cube([tab, shell, height]);
   
-  translate([sensor_length+e*2, small_chip_width+e*2])
+  translate([0, small_chip_width+e*2])
   cube([shell, tab+shell, height]);
   
-  translate([sensor_length+e*2, box_width-tab-shell])
+  translate([0, box_width-tab-shell])
   cube([shell, tab, height]);
+  
+  translate([sensor_length+e*2+shell, small_chip_width+e*2])
+  cube([shell, tab+shell, height]);
+  
+  translate([sensor_length+e*2+shell, box_width-tab-shell])
+  cube([shell, tab, height]);
+  
+  lip_height = small_chip_height-small_board_height;
+  translate([0, 0, height-lip_height])
+  cube([lip_height, small_chip_width, lip_height]);
+  
+  board_filler_height = board_max_height-board_min_height-e;
+  translate([led_board_offset+board_width+e, 0, height-board_filler_height])
+  cube([board_length-board_width, long_width, board_filler_height]);
   
   translate([led_board_offset+board_length-board_hole_size, board_width/2+e]) {
       for (offset = [board_hole1_offset, board_hole2_offset]) {
@@ -277,21 +298,50 @@ translate([0, 0, -height]) {
 
     translate([(box_length-led_hole_size)/2, box_width-shell*0.5, (height-led_hole_size)/2])
     cube([led_hole_size, shell*2, led_hole_size]);
-
-    translate([led_board_offset +board_length-board_hole1_offset+board_hole_size*1,board_width/4+e,height-shell/2])
-    cube([board_hole1_offset-board_hole2_offset-board_hole_size*5, board_width/2, shell*2]);
     
+    // button hole
     translate([e, row2, case_height/2])
     rotate([90, 0, -90])
-    cylinder(d=thread_outer, h=shell*2);
+    cylinder(d=thread_outer+2*e, h=shell*2);
     
-    translate([(sensor_length-cap_size)/2, row2-cap_size/2-e, height-shell/2])
+    // sensor hole
+    translate([(sensor_length-cap_size)/2+shell, row2-cap_size/2-e, height-shell/2])
     cube([cap_size+2*e, cap_size+2*e, shell*2]);
   }
 }
 
+    
+    // LED hole
+    led_hole_height = board_max_height-board_min_height+shell+e;
+    hole_top = long_width+shell*2;
+    hole_bottom = board_width/2;
+    hole_length = board_hole1_offset-board_hole2_offset-board_hole_size*5-hole_bottom;
+    
+    translate([led_board_offset +hole_bottom/2+board_length-board_hole1_offset+board_hole_size*1,long_width-hole_top+shell,height+shell-led_hole_height+e]) {
+      
+      translate([0, hole_top/2, 0])
+      cylinder(d1=hole_bottom, d2=hole_top, h=led_hole_height);
+      
+      translate([hole_length, hole_top/2, 0])
+      cylinder(d1=hole_bottom, d2=hole_top, h=led_hole_height);
 
-//components();
+    
+      translate([0, hole_top, led_hole_height])
+      rotate([90, 180, 90])
+      linear_extrude(height=hole_length, $fn=1)
+      polygon(points=[
+        [0, 0], [hole_top, 0], 
+        [hole_top-(hole_top-hole_bottom)/2,led_hole_height],
+        [(hole_top-hole_bottom)/2,led_hole_height],
+      ]);    
+    }
+
+}
+}
+}
+
+part();
+components();
 
 
 
