@@ -314,10 +314,10 @@ translate([0, 0, -height]) {
     // LED hole
     led_hole_height = board_max_height-board_min_height+shell+e;
     hole_top = long_width+shell*2;
-    hole_bottom = board_width/2;
-    hole_length = board_hole1_offset-board_hole2_offset-board_hole_size*5-hole_bottom;
+    hole_bottom = board_width*3/4;
+    hole_length = board_hole1_offset-board_hole2_offset-board_hole_size*4-hole_bottom;
     
-    translate([led_board_offset +hole_bottom/2+board_length-board_hole1_offset+board_hole_size*1,long_width-hole_top+shell,height+shell-led_hole_height+e]) {
+    translate([led_board_offset +hole_bottom/2+board_length-board_hole1_offset+board_hole_size*0.5,long_width-hole_top+shell,height+shell-led_hole_height+e]) {
       
       translate([0, hole_top/2, 0])
       cylinder(d1=hole_bottom, d2=hole_top, h=led_hole_height);
@@ -340,8 +340,26 @@ translate([0, 0, -height]) {
 }
 }
 
-part();
-components();
+module top() {
+  translate([-shell, -shell, -height-shell]) {
+
+    cube([long_length+shell*2, long_width+shell*2, shell]);
+    cube([box_length+shell*2, box_width+shell*2, shell]);
+    
+  }
+  
+  translate([long_length-shell, 0, -height])
+  cube([shell, long_width, shell]);
+  
+  translate([box_length+shell, 0, -height])
+  cube([shell, long_width, shell]);
+
+
+}
+
+top();
+//part();
+//components();
 
 
 
