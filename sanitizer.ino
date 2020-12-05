@@ -5,12 +5,15 @@
 #include <ESP8266WebServer.h>
 #include <FastLED.h>
 
+#define ACTIVATION_DELAY 10*1000
+#define UVC_DURATION 15*60*100
 
-#define LED 2 //Define blinking LED pin
-#define BUTTON 0
-#define RGB_LED 4
+#define LED_PIN 2 //Define blinking LED pin
+#define UVC_PIN 14
+#define BUTTON_PIN 0
+#define RGB_LED_PIN 4
 #define NUM_LEDS 1
-#define MOTION_SENSOR 5
+#define MOTION_SENSOR_PIN 5
 
 ESP8266WiFiMulti wifiMulti;     // Create an instance of the ESP8266WiFiMulti class, called 'wifiMulti'
 ESP8266WebServer server(80);    // Create a webserver object that listens for HTTP request on port 80
@@ -28,15 +31,17 @@ enum states{READY, MOTION, ACTIVATING, UVC};
 enum states state = READY;
 
 void setup() {
-  pinMode(LED, OUTPUT); // Initialize the LED pin as an output
-  pinMode(MOTION_SENSOR, INPUT);
-  pinMode(BUTTON, INPUT_PULLUP);
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(UVC_PIN, OUTPUT);
+  pinMode(MOTION_SENSOR_PIN, INPUT);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
 
   Serial.begin(115200);
 
   setupNetworks();
 
-  FastLED.addLeds<WS2812, RGB_LED, GRB>(leds, NUM_LEDS);
+  FastLED.setBrightness(100);
+  FastLED.addLeds<WS2812, RGB_LED_PIN, GRB>(leds, NUM_LEDS);
 
   server.on("/activate", HTTP_POST, postActivate);
   server.on("/", HTTP_GET, getDebug);
@@ -128,14 +133,20 @@ void updateLEDs() {
 
 // the loop function runs over and over again forever
 void loop() {
-  motion = digitalRead(MOTION_SENSOR) == HIGH;
+  motion = digitalRead(MOTION_SENSOR_PIN) == HIGH;
   if (motion) {
-    digitalWrite(LED, LOW); // Turn the LED on (Note that LOW is the voltage level)
+    digitalWrite(LED_PIN, LOW); // Turn the LED on (Note that LOW is the voltage level)
   } else {
-    digitalWrite(LED, HIGH); // Turn the LED off by making the voltage HIGH
+    digitalWrite(LED_PIN, HIGH); // Turn the LED off by making the voltage HIGH
   }
 
-  button = digitalRead(BUTTON) == LOW && timeInState() >= 1000;
+  if (state == UVC) {
+    digitalWrite(UVC_PIN, HIGH); // turn UVC on
+  } else {
+    digitalWrite(UVC_PIN, LOW); // turn UVC off
+  }
+
+  button = digitalRead(BUTTON_PIN) == LOW && timeInState() >= 1000;
 
   if (motion) {
     setState(MOTION);
@@ -143,9 +154,9 @@ void loop() {
     setState(READY);
   } else if (state == READY && button) {
     setState(ACTIVATING);
-  } else if (state == ACTIVATING && timeInState() > 10000) {
+  } else if (state == ACTIVATING && timeInState() > ACTIVATION_DELAY) {
     setState(UVC);
-  } else if (state == UVC && timeInState() > 5*60*1000) {
+  } else if (state == UVC && timeInState() > UVC_DURATION) {
     setState(READY);
   } else if ((state == UVC || state == ACTIVATING) && button) {
     setState(READY);
