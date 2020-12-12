@@ -6,7 +6,8 @@
 #include <FastLED.h>
 
 #define ACTIVATION_DELAY 10*1000
-#define UVC_DURATION 15*60*100
+#define UVC_DURATION 15*60*1000
+#define BUTTON_DEBOUNCE_DUR 100
 
 #define LED_PIN 2 //Define blinking LED pin
 #define UVC_PIN 14
@@ -22,12 +23,13 @@ ESP8266WebServer server(80);    // Create a webserver object that listens for HT
 
 CRGB leds[NUM_LEDS];
 
-bool motion = false;
-bool button = false;
+int buttonDownTime = 0;
+bool lastButton = false;
 boolean connectionWasAlive = true;
 
+int timeInUVC = 0;
 int stateEntered = 0;
-enum states{READY, MOTION, ACTIVATING, UVC};
+enum states{READY, ACTIVATING, UVC};
 enum states state = READY;
 
 void setup() {
@@ -40,7 +42,6 @@ void setup() {
 
   setupNetworks();
 
-  FastLED.setBrightness(100);
   FastLED.addLeds<WS2812, RGB_LED_PIN, GRB>(leds, NUM_LEDS);
 
   server.on("/activate", HTTP_POST, postActivate);
@@ -97,8 +98,18 @@ void setState(enum states newState) {
   if (newState == state) {
     return;
   }
+  if (state == UVC) {
+    timeInUVC += timeInState();
+  }
+  if (newState == READY) {
+    timeInUVC = 0;
+  }
   Serial.printf("entering state %d\r\n", newState);
   state = newState;
+  resetStateEntered();
+}
+
+void resetStateEntered() {
   stateEntered = millis();
 }
 
@@ -106,14 +117,12 @@ int timeInState() {
   return millis() - stateEntered;
 }
 
-void updateLEDs() {
+void updateLEDs(bool motion) {
   CRGB color;
   bool flashing = false;
   
   if (state == READY) {
     color = CRGB ( 0, 0, 255);
-  } else if (state == MOTION) {
-    color = CRGB ( 0, 255, 0);
   } else if (state == UVC) {
     color = CRGB ( 255, 0, 0);
     flashing = true;
@@ -121,6 +130,13 @@ void updateLEDs() {
     color = CRGB ( 255,150, 0);
     flashing = true;
   }
+  
+  if (motion && (state == READY || state == ACTIVATING)) {
+    color = CRGB ( 0, 255, 0);
+  } 
+
+  FastLED.setBrightness(flashing ? 255 : 100);
+
   if (flashing && ((millis() / 250) % 2 == 0)) {
     color = CRGB(0,0,0);
   }
@@ -133,7 +149,7 @@ void updateLEDs() {
 
 // the loop function runs over and over again forever
 void loop() {
-  motion = digitalRead(MOTION_SENSOR_PIN) == HIGH;
+  bool motion = digitalRead(MOTION_SENSOR_PIN) == HIGH;
   if (motion) {
     digitalWrite(LED_PIN, LOW); // Turn the LED on (Note that LOW is the voltage level)
   } else {
@@ -145,23 +161,29 @@ void loop() {
   } else {
     digitalWrite(UVC_PIN, LOW); // turn UVC off
   }
+  bool curButton = digitalRead(BUTTON_PIN) == LOW && timeInState() >= 1000;
+  // button edge trigger on release
+  bool buttonPress = curButton && !lastButton;
+  if (buttonPress) {
+    buttonDownTime = millis();
+  }
+  bool button = !curButton && lastButton && (millis() - buttonDownTime) > BUTTON_DEBOUNCE_DUR;
+  lastButton = curButton;
 
-  button = digitalRead(BUTTON_PIN) == LOW && timeInState() >= 1000;
-
-  if (motion) {
-    setState(MOTION);
-  } else if (state == MOTION && !motion) {
+  if ((state == UVC || state == ACTIVATING) && button) {
     setState(READY);
+  } else if (state == UVC && motion) {
+    setState(ACTIVATING);
+  } else if (state == ACTIVATING && motion) {
+    resetStateEntered();
   } else if (state == READY && button) {
     setState(ACTIVATING);
   } else if (state == ACTIVATING && timeInState() > ACTIVATION_DELAY) {
     setState(UVC);
-  } else if (state == UVC && timeInState() > UVC_DURATION) {
+  } else if (state == UVC && timeInUVC > UVC_DURATION) {
     setState(READY);
-  } else if ((state == UVC || state == ACTIVATING) && button) {
-    setState(READY);
-  }
+  } 
 
-  updateLEDs();
+  updateLEDs(motion);
   monitorWiFi();
 }
